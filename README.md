@@ -74,12 +74,18 @@ pre-commit run --all-files
 
 To run the exporter as a managed service with Podman while ensuring a fresh
 container is created on each start, use a `--rm` container with `Restart=no` in a
-systemd unit. The example below mounts the host journal and binds the HTTP
-port:
+systemd unit. Place the unit in `/etc/systemd/system/zpa-log-exporter.service`,
+run `systemctl daemon-reload`, and enable it with
+`systemctl enable --now zpa-log-exporter.service`.
+
+### EXPORTER_MODE=http (default)
+
+Expose the `/metrics` endpoint over HTTP. The example below mounts the host
+journal and binds the HTTP port:
 
 ```ini
 [Unit]
-Description=ZPA Log Exporter (Podman)
+Description=ZPA Log Exporter (Podman - HTTP mode)
 Wants=network-online.target
 After=network-online.target
 
@@ -98,6 +104,31 @@ ExecStop=/usr/bin/podman stop --ignore --time=10 zpa-log-exporter
 WantedBy=multi-user.target
 ```
 
-Place this unit in `/etc/systemd/system/zpa-log-exporter.service`, run
-`systemctl daemon-reload`, and enable it with
-`systemctl enable --now zpa-log-exporter.service`.
+### EXPORTER_MODE=textfile
+
+Write metrics to a `.prom` file instead of opening a port. Mount both the host
+journal and the textfile directory that Node Exporter will read from (override
+`TEXTFILE_DIR` as needed):
+
+```ini
+[Unit]
+Description=ZPA Log Exporter (Podman - textfile mode)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Environment="PODMAN_SYSTEMD_UNIT=%n"
+Environment="EXPORTER_MODE=textfile"
+Environment="TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector"
+Restart=no
+ExecStartPre=/usr/bin/podman pull ghcr.io/thomasdstewart/zpa-log-exporter:latest
+ExecStart=/usr/bin/podman run --rm \
+  --name zpa-log-exporter \
+  -v /run/log/journal:/run/log/journal:ro \
+  -v /var/lib/node_exporter/textfile_collector:/var/lib/node_exporter/textfile_collector \
+  ghcr.io/thomasdstewart/zpa-log-exporter:latest
+ExecStop=/usr/bin/podman stop --ignore --time=10 zpa-log-exporter
+
+[Install]
+WantedBy=multi-user.target
+```
