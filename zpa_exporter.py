@@ -31,7 +31,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # prometheus_client is preferred, but in constrained environments (e.g. offline
 # tests) it might not be installed. Fall back to a tiny local implementation
-# that supports the subset of functionality we use. 1
+# that supports the subset of functionality we use.
 try:  # pragma: no cover - exercised indirectly by integration tests
     from prometheus_client import (  # type: ignore
         Gauge,
@@ -124,7 +124,7 @@ TEXTFILE_WRITE_INTERVAL = float(
 
 # By convention, use lowercase + underscores, with a component prefix.
 # Using Gauges as we are reading latest values from logs, not directly
-# instrumenting internal counters. 2
+# instrumenting internal counters.
 
 MTUNNEL_CURRENT_ACTIVE = Gauge(
     "zpa_mtunnel_current_active",
@@ -213,7 +213,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
             self.wfile.write(output)
         except Exception as exc:  # noqa: BLE001
             # Best practice: expose exporter errors as a metric rather than
-            # raising HTTP 500s constantly. 3
+            # raising HTTP 500s constantly.
             EXPORTER_LAST_SCRAPE_ERROR.set(1)
             sys.stderr.write(f"[ERROR] Failed to generate metrics: {exc}\n")
             self.send_response(500)
