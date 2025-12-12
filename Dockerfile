@@ -1,5 +1,5 @@
-# Basic Python image – adjust version/base as you like
-FROM python:3.11-slim
+# Basic Python image
+FROM python:3.14-slim
 
 # Install journalctl (from systemd) so we can read the host journal
 # You may want to trim this further in a real image.
@@ -18,8 +18,8 @@ COPY zpa_exporter.py /app/zpa_exporter.py
 # Expose Prometheus scrape port
 EXPOSE 8080
 
-# Environment overrides (optional)
-# ENV ZPA_SYSLOG_IDENTIFIER=zpa-connector-child
-# ENV EXPORTER_PORT=8080
+# Environment overrides
+ENV ZPA_SYSLOG_IDENTIFIER=zpa-connector-child
+ENV EXPORTER_PORT=8080
 
 CMD ["python", "/app/zpa_exporter.py"]
