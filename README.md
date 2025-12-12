@@ -44,17 +44,21 @@ ensure `journalctl` is available.
 
 A GitHub Action builds the Docker image from the provided `Dockerfile` and
 publishes it to the GitHub Container Registry (GHCR) at
-`ghcr.io/<OWNER>/zpa-log-exporter`, where `<OWNER>` is your GitHub username or
-organization (use lowercase). Pull and run it with:
+`ghcr.io/thomasdstewart/zpa-log-exporter`. Pull and run it with:
 
 ```bash
-docker pull ghcr.io/<OWNER>/zpa-log-exporter:latest
+docker pull ghcr.io/thomasdstewart/zpa-log-exporter:latest
 docker run --rm -p 8080:8080 \
   -v /run/log/journal:/run/log/journal:ro \
-  ghcr.io/<OWNER>/zpa-log-exporter:latest
+  ghcr.io/thomasdstewart/zpa-log-exporter:latest
 ```
 
 Adjust the bind mount and environment variables as needed for your deployment.
+
+The image expects the host's journald directory to be mounted read-only so it
+can stream ZPA connector logs. If you do not use journald, or if your log files
+live elsewhere, build a custom image with an alternate log source and set
+`ZPA_SYSLOG_IDENTIFIER` accordingly.
 
 ## Development
 
