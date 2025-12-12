@@ -1,0 +1,5 @@
+ignored:
+  # System dependencies are intentionally unpinned
+  - DL3008
+  # Python dependencies are managed separately
+  - DL3013
