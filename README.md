@@ -42,6 +42,14 @@ In both modes the process must be able to read the host's journald logs. In a
 container, mount the journal directory (for example `/run/log/journal`) and
 ensure `journalctl` is available.
 
+Example metrics excerpt:
+
+```
+zpa_mtunnel_current_active{group="all"} 1234
+zpa_mtunnel_peak_active 2345
+zpa_mtunnel_type{protocol="tcp"} 1.234567e+06
+```
+
 ## Container image
 
 A GitHub Action builds the Docker image from the provided `Dockerfile` and
