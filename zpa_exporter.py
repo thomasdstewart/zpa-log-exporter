@@ -43,19 +43,26 @@ except ModuleNotFoundError:  # pragma: no cover - simple runtime fallback
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
 
     class _SimpleGauge:
-        def __init__(self, name: str, documentation: str, labelnames=None):
+        def __init__(self, name: str, documentation: str, labelnames=None, *, register=True):
             self.name = name
             self.documentation = documentation
             self.labelnames = list(labelnames or [])
             self._children: dict[tuple[str, ...], _SimpleGauge] = {}
             self._value: float | None = None
-            REGISTRY._register(self)  # type: ignore[attr-defined]
+            self._labels: dict[str, str] | None = None
+            if register:
+                REGISTRY._register(self)  # type: ignore[attr-defined]
 
         # Mimic prometheus_client Gauge.labels
         def labels(self, **kwargs):
             key = tuple(kwargs.get(label, "") for label in self.labelnames)
             if key not in self._children:
-                child = _SimpleGauge(self.name, self.documentation, self.labelnames)
+                child = _SimpleGauge(
+                    self.name,
+                    self.documentation,
+                    self.labelnames,
+                    register=False,
+                )
                 child._labels = kwargs
                 self._children[key] = child
             return self._children[key]
@@ -208,6 +215,14 @@ class MetricsHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
             self.wfile.write(b"Not found\n")
+            return
+
+        # Avoid emitting empty HELP/TYPE stubs before we've parsed any data.
+        if not FIRST_PARSE_DONE.wait(timeout=1):
+            self.send_response(503)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"Metrics not yet available\n")
             return
 
         try:
