@@ -13,7 +13,6 @@ The exporter can expose metrics in two ways:
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `ZPA_SYSLOG_IDENTIFIER` | `zpa-connector-child` | Syslog identifier to follow in journald. |
 | `EXPORTER_MODE` | `http` | `http` serves `/metrics`; `textfile` writes a `.prom` file. |
 | `EXPORTER_PORT` | `8080` | Port for the HTTP mode. |
 | `TEXTFILE_DIR` | `/var/lib/node_exporter/textfile_collector` | Directory where `.prom` file is written. |
@@ -56,8 +55,8 @@ Adjust the bind mount and environment variables as needed for your deployment.
 
 The image expects the host's journald directory to be mounted read-only so it
 can stream ZPA connector logs. If you do not use journald, or if your log files
-live elsewhere, build a custom image with an alternate log source and set
-`ZPA_SYSLOG_IDENTIFIER` accordingly.
+live elsewhere, build a custom image with an alternate log source that emits
+`zpa-connector-child` logs.
 
 ## Development
 

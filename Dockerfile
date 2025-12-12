@@ -19,7 +19,6 @@ COPY zpa_exporter.py /app/zpa_exporter.py
 EXPOSE 8080
 
 # Environment overrides
-ENV ZPA_SYSLOG_IDENTIFIER=zpa-connector-child
 ENV EXPORTER_PORT=8080
 
 CMD ["python", "/app/zpa_exporter.py"]

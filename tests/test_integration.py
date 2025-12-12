@@ -20,7 +20,6 @@ def build_env(mode: str, extra_env: dict[str, str] | None = None) -> dict[str, s
     env["EXPORTER_MODE"] = mode
     env["TEXTFILE_WRITE_INTERVAL"] = "0.2"
     env["PYTHONUNBUFFERED"] = "1"
-    env["ZPA_SYSLOG_IDENTIFIER"] = "zpa-connector-child"
     if extra_env:
         env.update(extra_env)
     return env

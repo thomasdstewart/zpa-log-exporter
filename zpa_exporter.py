@@ -105,9 +105,9 @@ except ModuleNotFoundError:  # pragma: no cover - simple runtime fallback
 # Configuration (can be overridden via environment variables if desired)
 # ---------------------------------------------------------------------------
 
-JOURNAL_SYSLOG_IDENTIFIER = os.environ.get(
-    "ZPA_SYSLOG_IDENTIFIER", "zpa-connector-child"
-)
+# The syslog identifier is fixed to the ZPA connector child process and is not
+# configurable via environment variables.
+JOURNAL_SYSLOG_IDENTIFIER = "zpa-connector-child"
 EXPORTER_MODE = os.environ.get("EXPORTER_MODE", "http").lower()
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8080"))
 TEXTFILE_DIR = os.environ.get(
