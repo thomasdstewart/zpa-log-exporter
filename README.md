@@ -55,3 +55,14 @@ docker run --rm -p 8080:8080 \
 ```
 
 Adjust the bind mount and environment variables as needed for your deployment.
+
+## Development
+
+Linting and basic hygiene checks are configured via [pre-commit](https://pre-commit.com/).
+Install the hook locally and run it across the repository with:
+
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
