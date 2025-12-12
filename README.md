@@ -69,3 +69,35 @@ pip install pre-commit
 pre-commit install
 pre-commit run --all-files
 ```
+
+## Running as a system-wide systemd unit with Podman
+
+To run the exporter as a managed service with Podman while ensuring a fresh
+container is created on each start, use a `--rm` container with `Restart=no` in a
+systemd unit. The example below mounts the host journal and binds the HTTP
+port:
+
+```ini
+[Unit]
+Description=ZPA Log Exporter (Podman)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Environment="PODMAN_SYSTEMD_UNIT=%n"
+Restart=no
+ExecStartPre=/usr/bin/podman pull ghcr.io/thomasdstewart/zpa-log-exporter:latest
+ExecStart=/usr/bin/podman run --rm \
+  --name zpa-log-exporter \
+  -p 8080:8080 \
+  -v /run/log/journal:/run/log/journal:ro \
+  ghcr.io/thomasdstewart/zpa-log-exporter:latest
+ExecStop=/usr/bin/podman stop --ignore --time=10 zpa-log-exporter
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Place this unit in `/etc/systemd/system/zpa-log-exporter.service`, run
+`systemctl daemon-reload`, and enable it with
+`systemctl enable --now zpa-log-exporter.service`.
