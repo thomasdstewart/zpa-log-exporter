@@ -34,6 +34,10 @@ python zpa_exporter.py
 # Writes /var/lib/node_exporter/textfile_collector/zpa_exporter.prom every 15s
 ```
 
+The `.prom` file is created only after the exporter parses at least one
+`Mtunnels(...)` log line; the write interval begins after that initial
+successful parse.
+
 In both modes the process must be able to read the host's journald logs. In a
 container, mount the journal directory (for example `/run/log/journal`) and
 ensure `journalctl` is available.
