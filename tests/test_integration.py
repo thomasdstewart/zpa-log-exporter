@@ -60,6 +60,18 @@ def assert_contains(haystack: str, needle: str) -> None:
         assert needle in haystack
 
 
+def assert_contains_any(haystack: str, needles: list[str]) -> None:
+    """Assert that at least one *needle* is present, printing the haystack on failure."""
+
+    if any(needle in haystack for needle in needles):
+        return
+
+    print("--- metrics output start ---", file=sys.stderr)
+    print(haystack, file=sys.stderr)
+    print("--- metrics output end ---", file=sys.stderr)
+    assert False, f"None of the expected strings were found: {needles!r}"
+
+
 def log_process_pipes(proc: subprocess.Popen) -> None:
     """Print stdout/stderr from *proc* to stderr for easier debugging."""
 
@@ -99,14 +111,16 @@ def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
         if not prom_path.exists():
             log_process_pipes(proc)
             assert prom_path.exists(), "Exporter did not create the textfile output"
-        expected_lines = [
-            'zpa_mtunnel_current_active{group="all"} 1234.0',
-            "zpa_mtunnel_peak_active 2345.0",
-            'zpa_mtunnel_type{group="tcp"} 1234567.0',
-        ]
 
-        for line in expected_lines:
-            assert_contains(content, line)
+        assert_contains(content, 'zpa_mtunnel_current_active{group="all"} 1234.0')
+        assert_contains(content, "zpa_mtunnel_peak_active 2345.0")
+        assert_contains_any(
+            content,
+            [
+                'zpa_mtunnel_type{group="tcp"} 1234567.0',
+                'zpa_mtunnel_type{group="tcp"} 1.234567e+06',
+            ],
+        )
     finally:
         wait_for_process_exit(proc)
 
@@ -133,13 +147,14 @@ def test_http_mode_serves_expected_metrics():
         if not body:
             log_process_pipes(proc)
 
-        expected_lines = [
-            'zpa_mtunnel_current_active{group="all"} 1234.0',
-            "zpa_mtunnel_peak_active 2345.0",
-            'zpa_mtunnel_type{group="tcp"} 1234567.0',
-        ]
-
-        for line in expected_lines:
-            assert_contains(body, line)
+        assert_contains(body, 'zpa_mtunnel_current_active{group="all"} 1234.0')
+        assert_contains(body, "zpa_mtunnel_peak_active 2345.0")
+        assert_contains_any(
+            body,
+            [
+                'zpa_mtunnel_type{group="tcp"} 1234567.0',
+                'zpa_mtunnel_type{group="tcp"} 1.234567e+06',
+            ],
+        )
     finally:
         wait_for_process_exit(proc)
