@@ -4,6 +4,7 @@
 # follower.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LINE_FILE="${SCRIPT_DIR}/../data/sample_mtunnels_line.txt"
-cat "${LINE_FILE}"
+# Ensure a trailing newline so the exporter sees the line immediately.
+printf '%s\n' "$(cat "${LINE_FILE}")"
 # Keep process alive so the exporter can continue reading
 sleep 60

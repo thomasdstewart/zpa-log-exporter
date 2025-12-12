@@ -49,6 +49,32 @@ def find_free_port() -> int:
         return sock.getsockname()[1]
 
 
+def assert_contains(haystack: str, needle: str) -> None:
+    """Assert that *needle* is in *haystack*, printing the haystack on failure."""
+
+    if needle not in haystack:
+        # Print to stderr so pytest always captures and shows it.
+        print("--- metrics output start ---", file=sys.stderr)
+        print(haystack, file=sys.stderr)
+        print("--- metrics output end ---", file=sys.stderr)
+        assert needle in haystack
+
+
+def log_process_pipes(proc: subprocess.Popen) -> None:
+    """Print stdout/stderr from *proc* to stderr for easier debugging."""
+
+    if proc.stdout:
+        out = proc.stdout.read()
+        if out:
+            print("--- process stdout ---", file=sys.stderr)
+            print(out, file=sys.stderr)
+    if proc.stderr:
+        err = proc.stderr.read()
+        if err:
+            print("--- process stderr ---", file=sys.stderr)
+            print(err, file=sys.stderr)
+
+
 def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
     prom_path = tmp_path / "zpa_exporter.prom"
     env = build_env(
@@ -70,12 +96,18 @@ def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
                     break
             time.sleep(0.2)
 
-        assert prom_path.exists(), "Exporter did not create the textfile output"
-        assert 'zpa_mtunnel_total_count{group="all"} 1234567.0' in content
-        assert 'zpa_mtunnel_current_active{group="no-health-report-based"} 0.0' in content
-        assert 'zpa_mtunnel_type_count{protocol="icmp"} 12.0' in content
-        assert "zpa_mtunnel_unbound_errored_count 1234.0" in content
-        assert "zpa_mtunnel_peak_active 2345.0" in content
+        if not prom_path.exists():
+            log_process_pipes(proc)
+            assert prom_path.exists(), "Exporter did not create the textfile output"
+        assert_contains(
+            content, 'zpa_mtunnel_total_count{group="all"} 1234567.0'
+        )
+        assert_contains(
+            content, 'zpa_mtunnel_current_active{group="no-health-report-based"} 0.0'
+        )
+        assert_contains(content, 'zpa_mtunnel_type_count{protocol="icmp"} 12.0')
+        assert_contains(content, "zpa_mtunnel_unbound_errored_count 1234.0")
+        assert_contains(content, "zpa_mtunnel_peak_active 2345.0")
     finally:
         wait_for_process_exit(proc)
 
@@ -99,7 +131,13 @@ def test_http_mode_serves_expected_metrics():
             except URLError:
                 time.sleep(0.2)
 
-        assert 'zpa_mtunnel_total_count{group="health-report-based"} 1234567.0' in body
-        assert "zpa_mtunnel_unbound_errored_count 1234.0" in body
+        if not body:
+            log_process_pipes(proc)
+
+        assert_contains(
+            body,
+            'zpa_mtunnel_total_count{group="health-report-based"} 1234567.0',
+        )
+        assert_contains(body, "zpa_mtunnel_unbound_errored_count 1234.0")
     finally:
         wait_for_process_exit(proc)
