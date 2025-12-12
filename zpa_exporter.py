@@ -365,6 +365,8 @@ def handle_log_message(msg: str) -> None:
         except Exception as exc:  # noqa: BLE001
             EXPORTER_LAST_SCRAPE_ERROR.set(1)
             sys.stderr.write(f"[ERROR] Failed to parse Mtunnels line: {exc}\n")
+        else:
+            EXPORTER_LAST_SCRAPE_ERROR.set(0)
 
 
 def tail_journal_forever():

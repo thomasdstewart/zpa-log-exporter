@@ -1,4 +1,5 @@
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -6,6 +7,8 @@ import time
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
+
+import zpa_exporter
 
 
 tests_dir = Path(__file__).resolve().parent
@@ -119,12 +122,13 @@ def test_http_mode_serves_expected_metrics():
         url = f"http://127.0.0.1:{port}/metrics"
         deadline = time.time() + 10
         body = ""
+        ready_indicator = 'zpa_mtunnel_current_active{group="all"} 1234.0'
 
         while time.time() < deadline:
             try:
                 with urlopen(url) as resp:
                     body = resp.read().decode()
-                if "zpa_mtunnel_total_count" in body:
+                if ready_indicator in body:
                     break
             except URLError:
                 time.sleep(0.2)
@@ -142,3 +146,31 @@ def test_http_mode_serves_expected_metrics():
             assert_contains(body, line)
     finally:
         wait_for_process_exit(proc)
+
+
+def test_last_scrape_error_resets_after_recovery(monkeypatch):
+    # Ensure a clean starting point
+    zpa_exporter.EXPORTER_LAST_SCRAPE_ERROR.set(0)
+
+    original_parser = zpa_exporter.parse_mtunnels_line
+
+    def boom(_line: str) -> None:
+        raise ValueError("boom")
+
+    def read_last_scrape_error() -> float:
+        output = zpa_exporter.generate_latest(zpa_exporter.REGISTRY).decode()
+        m = re.search(
+            r"^zpa_exporter_last_scrape_error\s+([\d.eE+-]+)", output, re.MULTILINE
+        )
+        assert m, "last scrape error metric missing"
+        return float(m.group(1))
+
+    # First, simulate a parse failure
+    monkeypatch.setattr(zpa_exporter, "parse_mtunnels_line", boom)
+    zpa_exporter.handle_log_message("Mtunnels(broken)")
+    assert read_last_scrape_error() == 1.0
+
+    # Then restore the parser and feed a valid line to ensure we recover
+    monkeypatch.setattr(zpa_exporter, "parse_mtunnels_line", original_parser)
+    zpa_exporter.handle_log_message(SAMPLE_LINE)
+    assert read_last_scrape_error() == 0.0
