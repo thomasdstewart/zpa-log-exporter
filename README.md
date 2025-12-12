@@ -124,6 +124,8 @@ Restart=no
 ExecStartPre=/usr/bin/podman pull ghcr.io/thomasdstewart/zpa-log-exporter:latest
 ExecStart=/usr/bin/podman run --rm \
   --name zpa-log-exporter \
+  --env=EXPORTER_MODE \
+  --env=TEXTFILE_DIR \
   -v /run/log/journal:/run/log/journal:ro \
   -v /var/lib/node_exporter/textfile_collector:/var/lib/node_exporter/textfile_collector \
   ghcr.io/thomasdstewart/zpa-log-exporter:latest
