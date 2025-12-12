@@ -4,7 +4,9 @@ Zscaler ZPA App Connector Prometheus exporter.
 
 - Tails journald (journalctl -f) for zpa-connector-child messages.
 - Parses Mtunnels(...) metrics lines.
-- Exposes metrics via /metrics on port 8080 in Prometheus format.
+- Exposes metrics via /metrics on port 8080 in Prometheus format **or** writes a
+  Prometheus textfile collector `.prom` file for consumption by the Node
+  Exporter.
 
 Requires:
     pip install prometheus_client
@@ -41,7 +43,11 @@ from prometheus_client import (
 JOURNAL_SYSLOG_IDENTIFIER = os.environ.get(
     "ZPA_SYSLOG_IDENTIFIER", "zpa-connector-child"
 )
+EXPORTER_MODE = os.environ.get("EXPORTER_MODE", "http").lower()
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8080"))
+TEXTFILE_DIR = os.environ.get("TEXTFILE_DIR")
+TEXTFILE_BASENAME = os.environ.get("TEXTFILE_BASENAME", "zpa_exporter.prom")
+TEXTFILE_WRITE_INTERVAL = float(os.environ.get("TEXTFILE_WRITE_INTERVAL", "15"))
 JOURNAL_CMD = [
     "journalctl",
     "-f",          # follow
@@ -164,6 +170,42 @@ def run_http_server(port: int):
 
     sys.stderr.write(f"[INFO] Exporter HTTP server listening on :{port}/metrics\n")
     server.serve_forever()
+
+
+def write_metrics_to_textfile(directory: str, filename: str) -> None:
+    """Render the current metrics registry to a textfile collector file."""
+
+    os.makedirs(directory, exist_ok=True)
+
+    output = generate_latest(REGISTRY)
+    temp_path = os.path.join(directory, f".{filename}.tmp")
+    final_path = os.path.join(directory, filename)
+
+    with open(temp_path, "wb") as handle:
+        handle.write(output)
+
+    # Atomic replace to avoid node_exporter reading partial files.
+    os.replace(temp_path, final_path)
+
+
+def run_textfile_writer(directory: str, filename: str, interval_seconds: float) -> None:
+    """Periodically write metrics to a Prometheus textfile collector location."""
+
+    sys.stderr.write(
+        "[INFO] Exporter textfile writer enabled; writing metrics to "
+        f"{os.path.join(directory, filename)} every {interval_seconds}s.\n"
+    )
+
+    while True:
+        try:
+            write_metrics_to_textfile(directory, filename)
+        except Exception as exc:  # noqa: BLE001
+            EXPORTER_LAST_SCRAPE_ERROR.set(1)
+            sys.stderr.write(f"[ERROR] Failed to write metrics textfile: {exc}\n")
+        else:
+            EXPORTER_LAST_SCRAPE_ERROR.set(0)
+
+        time.sleep(interval_seconds)
 
 
 # ---------------------------------------------------------------------------
@@ -339,13 +381,36 @@ def tail_journal_forever():
 # ---------------------------------------------------------------------------
 
 def main():
-    # Start HTTP server in a background thread
-    http_thread = threading.Thread(
-        target=run_http_server,
-        kwargs={"port": EXPORTER_PORT},
-        daemon=True,
-    )
-    http_thread.start()
+    # Start metrics exposure according to requested mode
+    if EXPORTER_MODE == "http":
+        http_thread = threading.Thread(
+            target=run_http_server,
+            kwargs={"port": EXPORTER_PORT},
+            daemon=True,
+        )
+        http_thread.start()
+    elif EXPORTER_MODE == "textfile":
+        if not TEXTFILE_DIR:
+            sys.stderr.write(
+                "[FATAL] TEXTFILE_DIR must be set when EXPORTER_MODE=textfile.\n"
+            )
+            sys.exit(1)
+
+        writer_thread = threading.Thread(
+            target=run_textfile_writer,
+            kwargs={
+                "directory": TEXTFILE_DIR,
+                "filename": TEXTFILE_BASENAME,
+                "interval_seconds": TEXTFILE_WRITE_INTERVAL,
+            },
+            daemon=True,
+        )
+        writer_thread.start()
+    else:
+        sys.stderr.write(
+            "[FATAL] Unknown EXPORTER_MODE. Use 'http' (default) or 'textfile'.\n"
+        )
+        sys.exit(1)
 
     # Handle SIGTERM/SIGINT cleanly
     def _signal_handler(signum, frame):  # noqa: ARG001
