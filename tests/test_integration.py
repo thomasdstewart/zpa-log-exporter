@@ -89,6 +89,9 @@ def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
         deadline = time.time() + 10
         content = ""
         while time.time() < deadline:
+            if proc.poll() is not None:
+                log_process_pipes(proc)
+                assert False, "Exporter exited prematurely"
             if prom_path.exists():
                 content = prom_path.read_text()
                 if SAMPLE_LINE.split(",", 1)[0] in content or "zpa_mtunnel_total_count" in content:
@@ -121,6 +124,9 @@ def test_http_mode_serves_expected_metrics():
         body = ""
 
         while time.time() < deadline:
+            if proc.poll() is not None:
+                log_process_pipes(proc)
+                assert False, "Exporter exited prematurely"
             try:
                 with urlopen(url) as resp:
                     body = resp.read().decode()
