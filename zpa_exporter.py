@@ -129,6 +129,7 @@ EXPORTER_LAST_SCRAPE_ERROR = Gauge(
 # HTTP handler (serves /metrics using prometheus_client)
 # ---------------------------------------------------------------------------
 
+
 class MetricsHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path != "/metrics":
