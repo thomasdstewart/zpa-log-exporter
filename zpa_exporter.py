@@ -374,8 +374,7 @@ def tail_journal_forever():
     If journalctl exits for some reason, we back off briefly and restart.
     """
     sys.stderr.write(
-        "[INFO] Starting journalctl tail for "
-        f"SYSLOG_IDENTIFIER={JOURNAL_SYSLOG_IDENTIFIER}\n"
+        "[INFO] Starting journalctl tail for zpa-connector-child\n"
     )
 
     while True:
@@ -387,7 +386,7 @@ def tail_journal_forever():
                     "-o",
                     "cat",  # message only
                     "-t",
-                    JOURNAL_SYSLOG_IDENTIFIER,
+                    "zpa-connector-child",
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
