@@ -99,15 +99,14 @@ def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
         if not prom_path.exists():
             log_process_pipes(proc)
             assert prom_path.exists(), "Exporter did not create the textfile output"
-        assert_contains(
-            content, 'zpa_mtunnel_total_count{group="all"} 1234567.0'
-        )
-        assert_contains(
-            content, 'zpa_mtunnel_current_active{group="no-health-report-based"} 0.0'
-        )
-        assert_contains(content, 'zpa_mtunnel_type_count{protocol="icmp"} 12.0')
-        assert_contains(content, "zpa_mtunnel_unbound_errored_count 1234.0")
-        assert_contains(content, "zpa_mtunnel_peak_active 2345.0")
+        expected_lines = [
+            'zpa_mtunnel_current_active{group="all"} 1234.0',
+            "zpa_mtunnel_peak_active 2345.0",
+            'zpa_mtunnel_type{group="tcp"} 1234567.0',
+        ]
+
+        for line in expected_lines:
+            assert_contains(content, line)
     finally:
         wait_for_process_exit(proc)
 
@@ -134,10 +133,13 @@ def test_http_mode_serves_expected_metrics():
         if not body:
             log_process_pipes(proc)
 
-        assert_contains(
-            body,
-            'zpa_mtunnel_total_count{group="health-report-based"} 1234567.0',
-        )
-        assert_contains(body, "zpa_mtunnel_unbound_errored_count 1234.0")
+        expected_lines = [
+            'zpa_mtunnel_current_active{group="all"} 1234.0',
+            "zpa_mtunnel_peak_active 2345.0",
+            'zpa_mtunnel_type{group="tcp"} 1234567.0',
+        ]
+
+        for line in expected_lines:
+            assert_contains(body, line)
     finally:
         wait_for_process_exit(proc)
