@@ -117,12 +117,6 @@ TEXTFILE_BASENAME = os.environ.get("TEXTFILE_BASENAME", "zpa_exporter.prom")
 TEXTFILE_WRITE_INTERVAL = float(
     os.environ.get("TEXTFILE_WRITE_INTERVAL", "15")
 )
-JOURNAL_CMD = [
-    "journalctl",
-    "-f",          # follow
-    "-o", "cat",   # message only
-    "-t", JOURNAL_SYSLOG_IDENTIFIER,
-]
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics
@@ -387,7 +381,14 @@ def tail_journal_forever():
     while True:
         try:
             proc = subprocess.Popen(
-                JOURNAL_CMD,
+                [
+                    "journalctl",
+                    "-f",  # follow
+                    "-o",
+                    "cat",  # message only
+                    "-t",
+                    JOURNAL_SYSLOG_IDENTIFIER,
+                ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
