@@ -4,7 +4,8 @@ Zscaler ZPA App Connector Prometheus exporter.
 
 - Tails journald (journalctl -f) for zpa-connector-child messages.
 - Parses Mtunnels(...) metrics lines.
-- Exposes metrics via /metrics on port 8080 in Prometheus format **or** writes a
+- Exposes metrics via /metrics on port 8080 in Prometheus format **or** writes
+  a
   Prometheus textfile collector `.prom` file for consumption by the Node
   Exporter.
 
@@ -22,7 +23,6 @@ In a container you’ll typically:
 import os
 import re
 import signal
-import socketserver
 import subprocess
 import sys
 import threading
@@ -47,7 +47,9 @@ EXPORTER_MODE = os.environ.get("EXPORTER_MODE", "http").lower()
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8080"))
 TEXTFILE_DIR = os.environ.get("TEXTFILE_DIR")
 TEXTFILE_BASENAME = os.environ.get("TEXTFILE_BASENAME", "zpa_exporter.prom")
-TEXTFILE_WRITE_INTERVAL = float(os.environ.get("TEXTFILE_WRITE_INTERVAL", "15"))
+TEXTFILE_WRITE_INTERVAL = float(
+    os.environ.get("TEXTFILE_WRITE_INTERVAL", "15")
+)
 JOURNAL_CMD = [
     "journalctl",
     "-f",          # follow
@@ -168,7 +170,9 @@ def run_http_server(port: int):
     #     daemon_threads = True
     # server = ThreadingHTTPServer(("0.0.0.0", port), MetricsHandler)
 
-    sys.stderr.write(f"[INFO] Exporter HTTP server listening on :{port}/metrics\n")
+    sys.stderr.write(
+        f"[INFO] Exporter HTTP server listening on :{port}/metrics\n"
+    )
     server.serve_forever()
 
 
@@ -188,8 +192,15 @@ def write_metrics_to_textfile(directory: str, filename: str) -> None:
     os.replace(temp_path, final_path)
 
 
-def run_textfile_writer(directory: str, filename: str, interval_seconds: float) -> None:
-    """Periodically write metrics to a Prometheus textfile collector location."""
+def run_textfile_writer(
+    directory: str,
+    filename: str,
+    interval_seconds: float,
+) -> None:
+    """Periodically write metrics to a Prometheus textfile collector.
+
+    Intended for Prometheus textfile collector locations.
+    """
 
     sys.stderr.write(
         "[INFO] Exporter textfile writer enabled; writing metrics to "
@@ -201,7 +212,9 @@ def run_textfile_writer(directory: str, filename: str, interval_seconds: float) 
             write_metrics_to_textfile(directory, filename)
         except Exception as exc:  # noqa: BLE001
             EXPORTER_LAST_SCRAPE_ERROR.set(1)
-            sys.stderr.write(f"[ERROR] Failed to write metrics textfile: {exc}\n")
+            sys.stderr.write(
+                f"[ERROR] Failed to write metrics textfile: {exc}\n"
+            )
         else:
             EXPORTER_LAST_SCRAPE_ERROR.set(0)
 
@@ -269,11 +282,15 @@ def parse_mtunnels_line(line: str) -> None:
             continue
 
         # peak active 2041 at cloud time 1765276725308313 us
-        m = re.search(r"^peak active\s+(\d+)\s+at cloud time\s+(\d+)\s+us$", part)
+        m = re.search(
+            r"^peak active\s+(\d+)\s+at cloud time\s+(\d+)\s+us$",
+            part,
+        )
         if m:
             peak_val = int(m.group(1))
             # cloud time is an opaque counter here; we expose the peak count,
-            # and you can add a separate metric if you care about the timestamp.
+            # and you can add a separate metric if you care about the
+            # timestamp.
             MTUNNEL_PEAK_ACTIVE.set(peak_val)
             continue
 
@@ -305,8 +322,9 @@ def parse_mtunnels_line(line: str) -> None:
             MTUNNEL_REAPED.set(int(m.group(1)))
             continue
 
-        # TODO: extend parsing for waf/adp/auto/active inspection, pipeline status,
-        # websocket stats, api traffic stats, etc. using additional metrics.
+        # TODO: extend parsing for waf/adp/auto/active inspection, pipeline
+        # status, websocket stats, api traffic stats, etc. using additional
+        # metrics.
 
 
 def handle_log_message(msg: str) -> None:
@@ -331,7 +349,8 @@ def tail_journal_forever():
     If journalctl exits for some reason, we back off briefly and restart.
     """
     sys.stderr.write(
-        f"[INFO] Starting journalctl tail for SYSLOG_IDENTIFIER={JOURNAL_SYSLOG_IDENTIFIER}\n"
+        "[INFO] Starting journalctl tail for "
+        f"SYSLOG_IDENTIFIER={JOURNAL_SYSLOG_IDENTIFIER}\n"
     )
 
     while True:
@@ -392,7 +411,8 @@ def main():
     elif EXPORTER_MODE == "textfile":
         if not TEXTFILE_DIR:
             sys.stderr.write(
-                "[FATAL] TEXTFILE_DIR must be set when EXPORTER_MODE=textfile.\n"
+                "[FATAL] TEXTFILE_DIR must be set when "
+                "EXPORTER_MODE=textfile.\n"
             )
             sys.exit(1)
 
@@ -408,7 +428,8 @@ def main():
         writer_thread.start()
     else:
         sys.stderr.write(
-            "[FATAL] Unknown EXPORTER_MODE. Use 'http' (default) or 'textfile'.\n"
+            "[FATAL] Unknown EXPORTER_MODE. Use 'http' (default) or "
+            "'textfile'.\n"
         )
         sys.exit(1)
 
