@@ -16,7 +16,7 @@ The exporter can expose metrics in two ways:
 | `ZPA_SYSLOG_IDENTIFIER` | `zpa-connector-child` | Syslog identifier to follow in journald. |
 | `EXPORTER_MODE` | `http` | `http` serves `/metrics`; `textfile` writes a `.prom` file. |
 | `EXPORTER_PORT` | `8080` | Port for the HTTP mode. |
-| `TEXTFILE_DIR` | _required for textfile mode_ | Directory where `.prom` file is written. |
+| `TEXTFILE_DIR` | `/var/lib/node_exporter/textfile_collector` | Directory where `.prom` file is written. |
 | `TEXTFILE_BASENAME` | `zpa_exporter.prom` | File name inside `TEXTFILE_DIR` for textfile mode. |
 | `TEXTFILE_WRITE_INTERVAL` | `15` | Seconds between writes in textfile mode. |
 
@@ -31,7 +31,6 @@ python zpa_exporter.py
 ### Node Exporter textfile collector mode
 ```bash
 export EXPORTER_MODE=textfile
-export TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector
 python zpa_exporter.py
 # Writes /var/lib/node_exporter/textfile_collector/zpa_exporter.prom every 15s
 ```

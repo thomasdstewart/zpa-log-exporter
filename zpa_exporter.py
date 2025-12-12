@@ -45,7 +45,9 @@ JOURNAL_SYSLOG_IDENTIFIER = os.environ.get(
 )
 EXPORTER_MODE = os.environ.get("EXPORTER_MODE", "http").lower()
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8080"))
-TEXTFILE_DIR = os.environ.get("TEXTFILE_DIR")
+TEXTFILE_DIR = os.environ.get(
+    "TEXTFILE_DIR", "/var/lib/node_exporter/textfile_collector"
+)
 TEXTFILE_BASENAME = os.environ.get("TEXTFILE_BASENAME", "zpa_exporter.prom")
 TEXTFILE_WRITE_INTERVAL = float(
     os.environ.get("TEXTFILE_WRITE_INTERVAL", "15")
