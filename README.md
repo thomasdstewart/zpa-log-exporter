@@ -39,3 +39,19 @@ python zpa_exporter.py
 In both modes the process must be able to read the host's journald logs. In a
 container, mount the journal directory (for example `/run/log/journal`) and
 ensure `journalctl` is available.
+
+## Container image
+
+A GitHub Action builds the Docker image from the provided `Dockerfile` and
+publishes it to the GitHub Container Registry (GHCR) at
+`ghcr.io/<OWNER>/zpa-log-exporter`, where `<OWNER>` is your GitHub username or
+organization (use lowercase). Pull and run it with:
+
+```bash
+docker pull ghcr.io/<OWNER>/zpa-log-exporter:latest
+docker run --rm -p 8080:8080 \
+  -v /run/log/journal:/run/log/journal:ro \
+  ghcr.io/<OWNER>/zpa-log-exporter:latest
+```
+
+Adjust the bind mount and environment variables as needed for your deployment.
