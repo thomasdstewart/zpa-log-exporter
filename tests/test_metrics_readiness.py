@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from zpa_exporter import FIRST_PARSE_DONE, MetricsHandler, MTUNNEL_PEAK_ACTIVE
+from zpa_exporter import FIRST_PARSE_DONE, MetricsHandler, MTUNNEL_PEAK_ACTIVE  # noqa: E402
 
 
 def find_free_port() -> int:
