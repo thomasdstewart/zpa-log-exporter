@@ -29,12 +29,77 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from prometheus_client import (
-    Gauge,
-    generate_latest,
-    CONTENT_TYPE_LATEST,
-    REGISTRY,
-)
+# prometheus_client is preferred, but in constrained environments (e.g. offline
+# tests) it might not be installed. Fall back to a tiny local implementation
+# that supports the subset of functionality we use. 1
+try:  # pragma: no cover - exercised indirectly by integration tests
+    from prometheus_client import (  # type: ignore
+        Gauge,
+        generate_latest,
+        CONTENT_TYPE_LATEST,
+        REGISTRY,
+    )
+except ModuleNotFoundError:  # pragma: no cover - simple runtime fallback
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
+    class _SimpleGauge:
+        def __init__(self, name: str, documentation: str, labelnames=None):
+            self.name = name
+            self.documentation = documentation
+            self.labelnames = list(labelnames or [])
+            self._children: dict[tuple[str, ...], _SimpleGauge] = {}
+            self._value: float | None = None
+            REGISTRY._register(self)  # type: ignore[attr-defined]
+
+        # Mimic prometheus_client Gauge.labels
+        def labels(self, **kwargs):
+            key = tuple(kwargs.get(label, "") for label in self.labelnames)
+            if key not in self._children:
+                child = _SimpleGauge(self.name, self.documentation, self.labelnames)
+                child._labels = kwargs
+                self._children[key] = child
+            return self._children[key]
+
+        def set(self, value: float) -> None:
+            self._value = float(value)
+
+        def samples(self):
+            if self._children:
+                for child in self._children.values():
+                    if child._value is not None:
+                        yield child._labels, child._value
+            elif self._value is not None:
+                yield {}, self._value
+
+    class _SimpleRegistry:
+        def __init__(self):
+            self._metrics: list[_SimpleGauge] = []
+
+        def _register(self, metric: _SimpleGauge) -> None:
+            self._metrics.append(metric)
+
+        def collect(self):
+            return self._metrics
+
+    def generate_latest(registry: "_SimpleRegistry" = None) -> bytes:
+        registry = registry or REGISTRY
+        lines: list[str] = []
+        for metric in registry.collect():
+            lines.append(f"# HELP {metric.name} {metric.documentation}")
+            lines.append(f"# TYPE {metric.name} gauge")
+            for labels, value in metric.samples():
+                if labels:
+                    label_str = ",".join(
+                        f'{k}="{v}"' for k, v in sorted(labels.items())
+                    )
+                    lines.append(f"{metric.name}{{{label_str}}} {value}")
+                else:
+                    lines.append(f"{metric.name} {value}")
+        lines.append("")
+        return "\n".join(lines).encode()
+
+    Gauge = _SimpleGauge
+    REGISTRY = _SimpleRegistry()
 
 # ---------------------------------------------------------------------------
 # Configuration (can be overridden via environment variables if desired)
@@ -111,10 +176,10 @@ MTUNNEL_TOTAL_FREE = Gauge(
     "Total mtunnel frees",
 )
 
-MTUNNEL_TYPE_COUNT = Gauge(
-    "zpa_mtunnel_type_count",
+MTUNNEL_TYPE = Gauge(
+    "zpa_mtunnel_type",
     "Mtunnel counts by protocol type",
-    ["protocol"],
+    ["group"],
 )
 
 MTUNNEL_REAPED = Gauge(
@@ -126,6 +191,10 @@ EXPORTER_LAST_SCRAPE_ERROR = Gauge(
     "zpa_exporter_last_scrape_error",
     "1 if the last journal parse had an error, 0 otherwise",
 )
+
+# Signal when we've parsed at least one Mtunnels line so textfile output waits
+# for real metric values instead of writing only HELP/TYPE stubs.
+FIRST_PARSE_DONE = threading.Event()
 
 # ---------------------------------------------------------------------------
 # HTTP handler (serves /metrics using prometheus_client)
@@ -211,6 +280,9 @@ def run_textfile_writer(
     )
 
     while True:
+        # Avoid writing empty HELP/TYPE stubs before we've seen any data.
+        if not FIRST_PARSE_DONE.wait(timeout=interval_seconds):
+            continue
         try:
             write_metrics_to_textfile(directory, filename)
         except Exception as exc:  # noqa: BLE001
@@ -242,92 +314,48 @@ def parse_mtunnels_line(line: str) -> None:
     group_str, rest = m.groups()
     groups = [g.strip() for g in group_str.split("|")]
 
-    # Split remaining parts by comma; each part is one logical section.
-    parts = [p.strip() for p in rest.split(",") if p.strip()]
+    # Group-based metrics (values separated by "|")
+    grouped_patterns = [
+        (r"current active\s+([\d|]+)", MTUNNEL_CURRENT_ACTIVE),
+        (r"total\s+([\d|]+)", MTUNNEL_TOTAL),
+        (r"to broker\s+([\d|]+)", MTUNNEL_TO_BROKER),
+        (r"to private broker\s+([\d|]+)", MTUNNEL_TO_PRIVATE_BROKER),
+    ]
 
-    for part in parts:
-        # current active 1360|1360|0
-        m = re.search(r"^current active\s+([\d|]+)", part)
+    for pattern, gauge in grouped_patterns:
+        m = re.search(pattern, rest)
         if m:
-            values = [int(v) for v in m.group(1).split("|")]
+            values = [int(v) for v in m.group(1).split("|") if v]
             for grp, val in zip(groups, values):
-                MTUNNEL_CURRENT_ACTIVE.labels(group=grp).set(val)
-            continue
+                gauge.labels(group=grp).set(val)
 
-        # total 1330691|1330596|95
-        m = re.search(r"^total\s+([\d|]+)$", part)
+    # Scalar metrics
+    scalar_patterns = [
+        (r"unbound/errored\s+(\d+)", MTUNNEL_UNBOUND_ERRORED),
+        (r"peak active\s+(\d+)\s+at cloud time", MTUNNEL_PEAK_ACTIVE),
+        (r"total mtunnel alloc\s+(\d+)", MTUNNEL_TOTAL_ALLOC),
+        (r"total mtunnel free\s+(\d+)", MTUNNEL_TOTAL_FREE),
+        (r"reaped\s+(\d+)", MTUNNEL_REAPED),
+    ]
+
+    for pattern, gauge in scalar_patterns:
+        m = re.search(pattern, rest)
         if m:
-            values = [int(v) for v in m.group(1).split("|")]
-            for grp, val in zip(groups, values):
-                MTUNNEL_TOTAL.labels(group=grp).set(val)
-            continue
+            gauge.set(int(m.group(1)))
 
-        # to broker 1325965|1325870|95
-        m = re.search(r"^to broker\s+([\d|]+)$", part)
-        if m:
-            values = [int(v) for v in m.group(1).split("|")]
-            for grp, val in zip(groups, values):
-                MTUNNEL_TO_BROKER.labels(group=grp).set(val)
-            continue
+    # types(tcp|udp|icmp|mtls|de|tcp_de|udp_de) 1173242|157354|95|0|0|0|0
+    m = re.search(r"types\(([^)]+)\)\s+([\d|]+)", rest)
+    if m:
+        proto_str, values_str = m.groups()
+        protos = [p.strip() for p in proto_str.split("|")]
+        values = [int(v) for v in values_str.split("|")]
+        for proto, val in zip(protos, values):
+            MTUNNEL_TYPE.labels(group=proto).set(val)
 
-        # to private broker 0|0|0
-        m = re.search(r"^to private broker\s+([\d|]+)$", part)
-        if m:
-            values = [int(v) for v in m.group(1).split("|")]
-            for grp, val in zip(groups, values):
-                MTUNNEL_TO_PRIVATE_BROKER.labels(group=grp).set(val)
-            continue
-
-        # unbound/errored 4726
-        m = re.search(r"^unbound/errored\s+(\d+)$", part)
-        if m:
-            MTUNNEL_UNBOUND_ERRORED.set(int(m.group(1)))
-            continue
-
-        # peak active 2041 at cloud time 1765276725308313 us
-        m = re.search(
-            r"^peak active\s+(\d+)\s+at cloud time\s+(\d+)\s+us$",
-            part,
-        )
-        if m:
-            peak_val = int(m.group(1))
-            # cloud time is an opaque counter here; we expose the peak count,
-            # and you can add a separate metric if you care about the
-            # timestamp.
-            MTUNNEL_PEAK_ACTIVE.set(peak_val)
-            continue
-
-        # total mtunnel alloc 1330691
-        m = re.search(r"^total mtunnel alloc\s+(\d+)$", part)
-        if m:
-            MTUNNEL_TOTAL_ALLOC.set(int(m.group(1)))
-            continue
-
-        # total mtunnel free 1329084
-        m = re.search(r"^total mtunnel free\s+(\d+)$", part)
-        if m:
-            MTUNNEL_TOTAL_FREE.set(int(m.group(1)))
-            continue
-
-        # types(tcp|udp|icmp|mtls|de|tcp_de|udp_de) 1173242|157354|95|0|0|0|0
-        m = re.search(r"^types\(([^)]+)\)\s+([\d|]+)$", part)
-        if m:
-            proto_str, values_str = m.groups()
-            protos = [p.strip() for p in proto_str.split("|")]
-            values = [int(v) for v in values_str.split("|")]
-            for proto, val in zip(protos, values):
-                MTUNNEL_TYPE_COUNT.labels(protocol=proto).set(val)
-            continue
-
-        # reaped 0
-        m = re.search(r"^reaped\s+(\d+)$", part)
-        if m:
-            MTUNNEL_REAPED.set(int(m.group(1)))
-            continue
-
-        # TODO: extend parsing for waf/adp/auto/active inspection, pipeline
-        # status, websocket stats, api traffic stats, etc. using additional
-        # metrics.
+    # TODO: extend parsing for waf/adp/auto/active inspection, pipeline
+    # status, websocket stats, api traffic stats, etc. using additional
+    # metrics.
+    FIRST_PARSE_DONE.set()
 
 
 def handle_log_message(msg: str) -> None:
