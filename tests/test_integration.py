@@ -102,7 +102,7 @@ def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
         expected_lines = [
             'zpa_mtunnel_current_active{group="all"} 1234.0',
             "zpa_mtunnel_peak_active 2345.0",
-            'zpa_mtunnel_type{group="tcp"} 1234567.0',
+            'zpa_mtunnel_type{group="tcp"} 1.234567e+06',
         ]
 
         for line in expected_lines:
@@ -136,7 +136,7 @@ def test_http_mode_serves_expected_metrics():
         expected_lines = [
             'zpa_mtunnel_current_active{group="all"} 1234.0',
             "zpa_mtunnel_peak_active 2345.0",
-            'zpa_mtunnel_type{group="tcp"} 1234567.0',
+            'zpa_mtunnel_type{group="tcp"} 1.234567e+06',
         ]
 
         for line in expected_lines:
