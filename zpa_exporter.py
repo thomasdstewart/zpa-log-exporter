@@ -173,7 +173,7 @@ MTUNNEL_TOTAL_FREE = Gauge(
 MTUNNEL_TYPE = Gauge(
     "zpa_mtunnel_type",
     "Mtunnel counts by protocol type",
-    ["group"],
+    ["protocol"],
 )
 
 MTUNNEL_REAPED = Gauge(
@@ -344,7 +344,7 @@ def parse_mtunnels_line(line: str) -> None:
         protos = [p.strip() for p in proto_str.split("|")]
         values = [int(v) for v in values_str.split("|")]
         for proto, val in zip(protos, values):
-            MTUNNEL_TYPE.labels(group=proto).set(val)
+            MTUNNEL_TYPE.labels(protocol=proto).set(val)
 
     # TODO: extend parsing for waf/adp/auto/active inspection, pipeline
     # status, websocket stats, api traffic stats, etc. using additional
