@@ -22,7 +22,6 @@ In a container you’ll typically:
 import os
 import re
 import signal
-import socketserver
 import subprocess
 import sys
 import threading
