@@ -6,6 +6,8 @@ repos:
       - id: end-of-file-fixer
       - id: check-ast
       - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.9
     hooks:
@@ -17,3 +19,10 @@ repos:
       - id: commitlint
         stages: [commit-msg]
         additional_dependencies: ['@commitlint/config-conventional']
+  - repo: local
+    hooks:
+      - id: semver-version-check
+        name: semver version check
+        entry: python scripts/check_semver.py
+        language: python
+        files: ^VERSION$
