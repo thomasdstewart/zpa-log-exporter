@@ -81,6 +81,11 @@ pre-commit install
 pre-commit run --all-files
 ```
 
+The project uses [Semantic Versioning](https://semver.org/); the current version
+is recorded in the `VERSION` file and enforced by a pre-commit hook. Update the
+version in `VERSION` when making releases (for example, `1.2.3` or
+`1.2.3-rc.1+build`).
+
 ## Running as a system-wide systemd unit with Podman
 
 To run the exporter as a managed service with Podman while ensuring a fresh
