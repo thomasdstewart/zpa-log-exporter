@@ -9,6 +9,12 @@ The exporter can expose metrics in two ways:
 - HTTP endpoint on `/metrics` (default mode)
 - Prometheus textfile collector output for consumption by the Node Exporter
 
+## Versioning
+
+Project releases follow [Semantic Versioning](https://semver.org/). The current
+version lives in the `VERSION` file, and a pre-commit hook (`check-semver-version-file`)
+enforces that it always contains a valid SemVer value.
+
 ## Configuration
 
 | Variable | Default | Description |
