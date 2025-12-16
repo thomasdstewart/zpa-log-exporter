@@ -29,6 +29,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_prefix: v
+          release_branches: main
           bump: ${{ inputs.release_type }}
 
       - name: Release summary
