@@ -13,7 +13,10 @@ The exporter can expose metrics in two ways:
 
 Project releases follow [Semantic Versioning](https://semver.org/). The current
 version lives in the `VERSION` file, and a pre-commit hook (`check-semver-version-file`)
-enforces that it always contains a valid SemVer value.
+enforces that it always contains a valid SemVer value. If you hit a merge
+conflict on `VERSION`, choose the highest version, update the file accordingly,
+and rerun the hook (or `python scripts/check_semver.py VERSION`) to verify the
+resolution.
 
 ## Configuration
 
