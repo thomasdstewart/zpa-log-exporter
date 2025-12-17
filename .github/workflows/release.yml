@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  workflows: write
 
 jobs:
   create-release:
@@ -85,6 +86,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CUSTOM_TAG: v${{ steps.version.outputs.next_version }}
           RELEASE_BRANCHES: main
+
+      - name: Trigger Docker publish workflow
+        if: steps.tag.outputs.new_tag != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "docker-publish.yml",
+              ref: "${{ steps.tag.outputs.new_tag }}",
+            });
 
       - name: Release summary
         env:
