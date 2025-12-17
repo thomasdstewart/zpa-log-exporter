@@ -14,10 +14,6 @@ Requires:
 
 Run:
     python zpa_exporter.py
-
-In a container you’ll typically:
-    - Mount the host journal (e.g. /run/log/journal or /var/log/journal)
-    - Ensure journalctl is available in the image
 """
 
 import os
