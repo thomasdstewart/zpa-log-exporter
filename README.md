@@ -81,6 +81,20 @@ pre-commit install
 pre-commit run --all-files
 ```
 
+## Release automation
+
+To cut a new SemVer release and trigger a tagged Docker build:
+
+1. Open the **Actions** tab in GitHub and select the **Release** workflow.
+2. Click **Run workflow**, choose the bump type (`patch`, `minor`, or `major`),
+   and run it against the `main` branch (the default branch).
+
+The workflow uses [anothrNick/github-tag-action](https://github.com/anothrNick/github-tag-action)
+to bump the next `vX.Y.Z` tag and [softprops/action-gh-release](https://github.com/softprops/action-gh-release)
+to publish a GitHub release with generated notes. The new tag automatically
+triggers the container publish workflow so images for the release are built and
+pushed, including the moving `latest` tag and the versioned tag produced by the
+release.
 The project uses [Semantic Versioning](https://semver.org/); the current version
 is recorded in the `VERSION` file and enforced by a pre-commit hook. Update the
 version in `VERSION` when making releases (for example, `1.2.3` or
