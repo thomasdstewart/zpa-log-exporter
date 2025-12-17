@@ -22,15 +22,69 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Bump tag
+      - name: Validate current version
+        run: python scripts/check_semver.py
+
+      - name: Calculate next version
+        id: version
+        run: |
+          set -eo pipefail
+
+          release_type="${{ inputs.release_type }}"
+          current_version=$(cat VERSION)
+
+          if ! [[ "$current_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "VERSION does not contain a simple MAJOR.MINOR.PATCH value: $current_version" >&2
+            exit 1
+          fi
+
+          IFS=. read -r major minor patch <<<"$current_version"
+
+          case "$release_type" in
+            patch)
+              patch=$((patch + 1))
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            *)
+              echo "Unsupported release type: $release_type" >&2
+              exit 1
+              ;;
+          esac
+
+          next_version="${major}.${minor}.${patch}"
+
+          echo "next_version=${next_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Update VERSION file
+        run: echo "${{ steps.version.outputs.next_version }}" > VERSION
+
+      - name: Commit version update
+        run: |
+          if git diff --quiet VERSION; then
+            echo "VERSION already up to date"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add VERSION
+            git commit -m "chore: release v${{ steps.version.outputs.next_version }}"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
+      - name: Create tag
         id: tag
         uses: anothrNick/github-tag-action@1.70.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_prefix: v
-          release_branches: main
-          bump: ${{ inputs.release_type }}
+          CUSTOM_TAG: v${{ steps.version.outputs.next_version }}
+          RELEASE_BRANCHES: main
 
       - name: Release summary
         env:
