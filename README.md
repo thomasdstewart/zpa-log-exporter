@@ -95,6 +95,10 @@ to publish a GitHub release with generated notes. The new tag automatically
 triggers the container publish workflow so images for the release are built and
 pushed, including the moving `latest` tag and the versioned tag produced by the
 release.
+The project uses [Semantic Versioning](https://semver.org/); the current version
+is recorded in the `VERSION` file and enforced by a pre-commit hook. Update the
+version in `VERSION` when making releases (for example, `1.2.3` or
+`1.2.3-rc.1+build`).
 
 ## Running as a system-wide systemd unit with Podman
 
