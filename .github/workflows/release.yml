@@ -12,13 +12,14 @@ on:
 
 permissions:
   contents: write
+  workflows: write
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -80,11 +81,24 @@ jobs:
 
       - name: Create tag
         id: tag
-        uses: anothrNick/github-tag-action@1.70.0
+        uses: anothrNick/github-tag-action@1.75.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CUSTOM_TAG: v${{ steps.version.outputs.next_version }}
           RELEASE_BRANCHES: main
+
+      - name: Trigger Docker publish workflow
+        if: steps.tag.outputs.new_tag != ''
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "docker-publish.yml",
+              ref: "${{ steps.tag.outputs.new_tag }}",
+            });
 
       - name: Release summary
         env:
