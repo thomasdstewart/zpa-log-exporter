@@ -27,7 +27,7 @@ def build_env(mode: str, extra_env: dict[str, str] | None = None) -> dict[str, s
 
 def start_exporter(env: dict[str, str]) -> subprocess.Popen:
     return subprocess.Popen(
-        [sys.executable, "zpa_exporter.py"],
+        [sys.executable, "zpa-log-exporter.py"],
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -75,7 +75,7 @@ def log_process_pipes(proc: subprocess.Popen) -> None:
 
 
 def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
-    prom_path = tmp_path / "zpa_exporter.prom"
+    prom_path = tmp_path / "zpa-log-exporter.prom"
     env = build_env(
         "textfile",
         {

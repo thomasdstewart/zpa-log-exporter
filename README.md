@@ -16,22 +16,22 @@ The exporter can expose metrics in two ways:
 | `EXPORTER_MODE` | `http` | `http` serves `/metrics`; `textfile` writes a `.prom` file. |
 | `EXPORTER_PORT` | `8080` | Port for the HTTP mode. |
 | `TEXTFILE_DIR` | `/var/lib/node_exporter/textfile_collector` | Directory where `.prom` file is written. |
-| `TEXTFILE_BASENAME` | `zpa_exporter.prom` | File name inside `TEXTFILE_DIR` for textfile mode. |
+| `TEXTFILE_BASENAME` | `zpa-log-exporter.prom` | File name inside `TEXTFILE_DIR` for textfile mode. |
 | `TEXTFILE_WRITE_INTERVAL` | `15` | Seconds between writes in textfile mode. |
 
 ## Usage
 
 ### HTTP mode (default)
 ```bash
-python zpa_exporter.py
+python zpa-log-exporter.py
 # Exposes http://0.0.0.0:8080/metrics
 ```
 
 ### Node Exporter textfile collector mode
 ```bash
 export EXPORTER_MODE=textfile
-python zpa_exporter.py
-# Writes /var/lib/node_exporter/textfile_collector/zpa_exporter.prom every 15s
+python zpa-log-exporter.py
+# Writes /var/lib/node_exporter/textfile_collector/zpa-log-exporter.prom every 15s
 ```
 
 The `.prom` file is created only after the exporter parses at least one
