@@ -1,4 +1,4 @@
-name: Conventional Commits
+name: Commit Lint
 
 on:
   pull_request:
@@ -17,5 +17,3 @@ jobs:
 
       - name: Check commit messages
         uses: wagoid/commitlint-github-action@v6
-        with:
-          configFile: .commitlint.config.mjs
