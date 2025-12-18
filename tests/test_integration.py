@@ -10,15 +10,12 @@ from urllib.request import urlopen
 
 tests_dir = Path(__file__).resolve().parent
 BIN_DIR = tests_dir / "bin"
-SAMPLE_LINE = (tests_dir / "data" / "sample_mtunnels_line.txt").read_text().strip()
 
 
-def build_env(mode: str, extra_env: dict[str, str] | None = None) -> dict[str, str]:
+def build_env(extra_env: dict[str, str] | None = None) -> dict[str, str]:
     env = os.environ.copy()
     env.setdefault("PATH", "")
     env["PATH"] = f"{BIN_DIR}:{env['PATH']}"
-    env["EXPORTER_MODE"] = mode
-    env["TEXTFILE_WRITE_INTERVAL"] = "0.2"
     env["PYTHONUNBUFFERED"] = "1"
     if extra_env:
         env.update(extra_env)
@@ -74,48 +71,9 @@ def log_process_pipes(proc: subprocess.Popen) -> None:
             print(err, file=sys.stderr)
 
 
-def test_textfile_mode_writes_expected_metrics(tmp_path: Path):
-    prom_path = tmp_path / "zpa-log-exporter.prom"
-    env = build_env(
-        "textfile",
-        {
-            "TEXTFILE_DIR": str(tmp_path),
-            "TEXTFILE_BASENAME": prom_path.name,
-        },
-    )
-
-    proc = start_exporter(env)
-    try:
-        deadline = time.time() + 10
-        content = ""
-        while time.time() < deadline:
-            if proc.poll() is not None:
-                log_process_pipes(proc)
-                assert False, "Exporter exited prematurely"
-            if prom_path.exists():
-                content = prom_path.read_text()
-                if SAMPLE_LINE.split(",", 1)[0] in content or "zpa_mtunnel_total_count" in content:
-                    break
-            time.sleep(0.2)
-
-        if not prom_path.exists():
-            log_process_pipes(proc)
-            assert prom_path.exists(), "Exporter did not create the textfile output"
-        expected_lines = [
-            'zpa_mtunnel_current_active{group="all"} 1234.0',
-            "zpa_mtunnel_peak_active 2345.0",
-            'zpa_mtunnel_type{protocol="tcp"} 1.234567e+06',
-        ]
-
-        for line in expected_lines:
-            assert_contains(content, line)
-    finally:
-        wait_for_process_exit(proc)
-
-
 def test_http_mode_serves_expected_metrics():
     port = find_free_port()
-    env = build_env("http", {"EXPORTER_PORT": str(port)})
+    env = build_env({"EXPORTER_PORT": str(port)})
 
     proc = start_exporter(env)
     try:
