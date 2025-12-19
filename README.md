@@ -76,14 +76,10 @@ version in `VERSION` when making releases (for example, `1.2.3` or
 
 ## Running as a system-wide systemd unit with Podman
 
-To run the exporter as a managed service with Podman while ensuring a fresh
-container is created on each start, use a `--rm` container with `Restart=no` in a
-systemd unit. Place the unit in `/etc/systemd/system/zpa-log-exporter.service`,
+To run the exporter as a managed service with Podman place the unit in `/etc/systemd/system/zpa-log-exporter.service`,
 run `systemctl daemon-reload`, and enable it with
-`systemctl enable --now zpa-log-exporter.service`.
-
-Expose the `/metrics` endpoint over HTTP. The example below mounts the host
-journal and binds the HTTP port:
+`systemctl enable --now zpa-log-exporter.service`. This will expose the `/metrics` endpoint over HTTP it mounts the host
+journal and binds the HTTP port.
 
 ```ini
 [Unit]
@@ -105,4 +101,3 @@ ExecStop=/usr/bin/podman stop --ignore --time=10 zpa-log-exporter
 [Install]
 WantedBy=multi-user.target
 ```
-
