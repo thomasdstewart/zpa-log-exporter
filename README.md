@@ -44,13 +44,6 @@ docker run --rm -p 8080:8080 \
   ghcr.io/thomasdstewart/zpa-log-exporter:latest
 ```
 
-Adjust the bind mount and environment variables as needed for your deployment.
-
-The image expects the host's journald directory to be mounted read-only so it
-can stream ZPA connector logs. If you do not use journald, or if your log files
-live elsewhere, build a custom image with an alternate log source that emits
-`zpa-connector-child` logs.
-
 ## Development
 
 Linting and basic hygiene checks are configured via [pre-commit](https://pre-commit.com/).
