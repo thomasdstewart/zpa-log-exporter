@@ -14,7 +14,6 @@ The exporter exposes metrics via an HTTP endpoint on `/metrics`.
 
 ## Usage
 
-### HTTP mode
 ```bash
 python zpa-log-exporter.py
 # Exposes http://0.0.0.0:8080/metrics
