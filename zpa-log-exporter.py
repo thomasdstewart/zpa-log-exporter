@@ -233,6 +233,7 @@ def run_http_server(port: int):
 # Journald parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_mtunnels_line(line: str) -> None:
     """
     Parse an Mtunnels(...) line and update Prometheus metrics.
