@@ -50,7 +50,7 @@ Linting and basic hygiene checks are configured via [pre-commit](https://pre-com
 Install the hook locally and run it across the repository with:
 
 ```bash
-pip install pre-commit
+apt-get install pre-commit
 pre-commit install
 pre-commit run --all-files
 ```
