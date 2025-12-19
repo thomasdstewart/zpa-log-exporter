@@ -25,7 +25,9 @@ python zpa-log-exporter.py
 
 The process must be able to read the host's journald logs. In a
 container, mount the journal directory (for example `/run/log/journal`) and
-ensure `journalctl` is available.
+ensure `journalctl` is available. On SELinux-enforcing hosts, label the bind
+mount (for example, `-v /run/log/journal:/run/log/journal:ro,z` or
+`--security-opt label=disable`) so the container can read the journal files.
 
 Example metrics excerpt:
 
@@ -44,7 +46,7 @@ publishes it to the GitHub Container Registry (GHCR) at
 ```bash
 docker pull ghcr.io/thomasdstewart/zpa-log-exporter:latest
 docker run --rm -p 8080:8080 \
-  -v /run/log/journal:/run/log/journal:ro \
+  -v /run/log/journal:/run/log/journal:ro,z \
   ghcr.io/thomasdstewart/zpa-log-exporter:latest
 ```
 
@@ -94,13 +96,10 @@ After=network-online.target
 [Service]
 Environment="PODMAN_SYSTEMD_UNIT=%n"
 Restart=no
-ExecStartPre=/usr/bin/podman pull ghcr.io/thomasdstewart/zpa-log-exporter:latest
-ExecStart=/usr/bin/podman run --rm \
-  --name zpa-log-exporter \
-  -p 8080:8080 \
-  -v /run/log/journal:/run/log/journal:ro \
+ExecStart=/usr/bin/podman run --rm --pull=always --replace --label io.containers.autoupdate=image \
+  --name zpa-log-exporter --publish 8080:8080 --volume /run/log/journal:/run/log/journal:ro,z \
   ghcr.io/thomasdstewart/zpa-log-exporter:latest
-ExecStop=/usr/bin/podman stop --ignore --time=10 zpa-log-exporter
+ExecStop=/usr/bin/podman rm --ignore --force --time=10 zpa-log-exporter
 
 [Install]
 WantedBy=multi-user.target
