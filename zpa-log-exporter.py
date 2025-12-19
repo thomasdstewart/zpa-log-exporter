@@ -179,6 +179,10 @@ EXPORTER_LAST_SCRAPE_ERROR = Gauge(
     "1 if the last journal parse had an error, 0 otherwise",
 )
 
+# Signals the first successful mtunnel parse so the /metrics endpoint can
+# avoid returning a payload without mtunnel samples.
+FIRST_MTUNNEL_SCRAPE_READY = threading.Event()
+
 # ---------------------------------------------------------------------------
 # HTTP handler (serves /metrics using prometheus_client)
 # ---------------------------------------------------------------------------
@@ -191,6 +195,16 @@ class MetricsHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
             self.wfile.write(b"Not found\n")
+            return
+
+        # Avoid serving a payload with only HELP/TYPE metadata before any
+        # Mtunnels samples have been seen. Wait briefly for the first parse
+        # before responding to the caller.
+        if not FIRST_MTUNNEL_SCRAPE_READY.wait(timeout=1.0):
+            self.send_response(503)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"Mtunnel metrics not yet available\n")
             return
 
         try:
@@ -285,6 +299,8 @@ def parse_mtunnels_line(line: str) -> None:
         values = [int(v) for v in values_str.split("|")]
         for proto, val in zip(protos, values):
             MTUNNEL_TYPE.labels(protocol=proto).set(val)
+
+    FIRST_MTUNNEL_SCRAPE_READY.set()
 
     # TODO: extend parsing for waf/adp/auto/active inspection, pipeline
     # status, websocket stats, api traffic stats, etc. using additional
