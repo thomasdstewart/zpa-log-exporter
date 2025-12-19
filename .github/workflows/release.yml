@@ -96,7 +96,7 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "docker-publish.yml",
+              workflow_id: "publish.yml",
               ref: "${{ steps.tag.outputs.new_tag }}",
             });
 
