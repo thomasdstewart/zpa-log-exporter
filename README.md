@@ -1,5 +1,9 @@
 # zpa-log-exporter
 
+[![Tests](https://github.com/thomasdstewart/zpa-log-exporter/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/thomasdstewart/zpa-log-exporter/actions/workflows/tests.yml)
+[![Lint](https://github.com/thomasdstewart/zpa-log-exporter/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/thomasdstewart/zpa-log-exporter/actions/workflows/lint.yml)
+[![Publish](https://github.com/thomasdstewart/zpa-log-exporter/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/thomasdstewart/zpa-log-exporter/actions/workflows/publish.yml)
+
 Prometheus exporter for Zscaler ZPA App Connectors. The exporter tails
 `journalctl -f -t zpa-connector-child` and parses `Mtunnels(...)` log lines to
 produce metrics.
