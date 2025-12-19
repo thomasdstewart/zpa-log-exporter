@@ -1,1 +1,1 @@
-When creating commit messages use concentional commit format.
+When creating commit messages use conventional commits format.
