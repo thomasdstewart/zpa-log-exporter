@@ -87,7 +87,7 @@ journal and binds the HTTP port.
 
 ```ini
 [Unit]
-Description=ZPA Log Exporter (Podman - HTTP mode)
+Description=ZPA Log Exporter
 Wants=network-online.target
 After=network-online.target
 
