@@ -106,3 +106,45 @@ def test_http_mode_serves_expected_metrics():
             assert_contains(body, line)
     finally:
         wait_for_process_exit(proc)
+
+
+def test_textfile_mode_writes_expected_metrics(tmp_path):
+    env = build_env(
+        {
+            "EXPORTER_ENABLE_HTTP": "false",
+            "EXPORTER_TEXTFILE_DIR": str(tmp_path),
+            "EXPORTER_TEXTFILE_INTERVAL": "1",
+        }
+    )
+
+    proc = start_exporter(env)
+    try:
+        prom_path = tmp_path / "zpa_log_exporter.prom"
+        deadline = time.time() + 15
+        body = ""
+
+        while time.time() < deadline:
+            if proc.poll() is not None:
+                log_process_pipes(proc)
+                assert False, "Exporter exited prematurely"
+
+            if prom_path.exists():
+                body = prom_path.read_text()
+                if "zpa_mtunnel_total_count" in body:
+                    break
+
+            time.sleep(0.2)
+
+        if not body:
+            log_process_pipes(proc)
+
+        expected_lines = [
+            'zpa_mtunnel_current_active{group="all"} 1234.0',
+            "zpa_mtunnel_peak_active 2345.0",
+            'zpa_mtunnel_type{protocol="tcp"} 1.234567e+06',
+        ]
+
+        for line in expected_lines:
+            assert_contains(body, line)
+    finally:
+        wait_for_process_exit(proc)

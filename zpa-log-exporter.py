@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 # prometheus_client is preferred, but in constrained environments (e.g. offline
 # tests) it might not be installed. Fall back to a tiny local implementation
@@ -109,7 +110,31 @@ except ModuleNotFoundError:  # pragma: no cover - simple runtime fallback
 # The syslog identifier is fixed to the ZPA connector child process and is not
 # configurable via environment variables.
 JOURNAL_SYSLOG_IDENTIFIER = "zpa-connector-child"
+
+
+def _env_bool(name: str, default: str) -> bool:
+    raw_val = os.environ.get(name, default)
+    return raw_val.lower() not in {"0", "false", "no", "off"}
+
+
+def _env_float(name: str, default: float) -> float:
+    raw_val = os.environ.get(name)
+    if raw_val is None:
+        return default
+    try:
+        value = float(raw_val)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8080"))
+EXPORTER_ENABLE_HTTP = _env_bool("EXPORTER_ENABLE_HTTP", "true")
+EXPORTER_TEXTFILE_DIR = os.environ.get("EXPORTER_TEXTFILE_DIR")
+EXPORTER_TEXTFILE_NAME = os.environ.get(
+    "EXPORTER_TEXTFILE_NAME", "zpa_log_exporter.prom"
+)
+EXPORTER_TEXTFILE_INTERVAL = _env_float("EXPORTER_TEXTFILE_INTERVAL", 15.0)
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics
@@ -243,6 +268,35 @@ def run_http_server(port: int):
         f"[INFO] Exporter HTTP server listening on :{port}/metrics\n"
     )
     server.serve_forever()
+
+
+def write_prom_textfile(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    output = generate_latest(REGISTRY)
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    tmp_path.write_bytes(output)
+    tmp_path.replace(path)
+
+
+def run_textfile_writer(directory: str, interval: float, filename: str) -> None:
+    target_path = Path(directory) / filename
+    sys.stderr.write(
+        f"[INFO] Exporter textfile writer enabled at {target_path} (interval {interval}s)\n"
+    )
+
+    while True:
+        if not FIRST_MTUNNEL_SCRAPE_READY.wait(timeout=1.0):
+            continue
+
+        try:
+            write_prom_textfile(target_path)
+        except Exception as exc:  # noqa: BLE001
+            EXPORTER_LAST_SCRAPE_ERROR.set(1)
+            sys.stderr.write(f"[ERROR] Failed to write textfile: {exc}\n")
+        else:
+            EXPORTER_LAST_SCRAPE_ERROR.set(0)
+
+        time.sleep(interval)
 # ---------------------------------------------------------------------------
 # Journald parsing
 # ---------------------------------------------------------------------------
@@ -386,12 +440,27 @@ def tail_journal_forever():
 # ---------------------------------------------------------------------------
 
 def main():
-    http_thread = threading.Thread(
-        target=run_http_server,
-        kwargs={"port": EXPORTER_PORT},
-        daemon=True,
-    )
-    http_thread.start()
+    if EXPORTER_ENABLE_HTTP:
+        http_thread = threading.Thread(
+            target=run_http_server,
+            kwargs={"port": EXPORTER_PORT},
+            daemon=True,
+        )
+        http_thread.start()
+    else:
+        sys.stderr.write("[INFO] HTTP exporter disabled by configuration.\n")
+
+    if EXPORTER_TEXTFILE_DIR:
+        textfile_thread = threading.Thread(
+            target=run_textfile_writer,
+            kwargs={
+                "directory": EXPORTER_TEXTFILE_DIR,
+                "interval": EXPORTER_TEXTFILE_INTERVAL,
+                "filename": EXPORTER_TEXTFILE_NAME,
+            },
+            daemon=True,
+        )
+        textfile_thread.start()
 
     # Handle SIGTERM/SIGINT cleanly
     def _signal_handler(signum, frame):  # noqa: ARG001
