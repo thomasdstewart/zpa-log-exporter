@@ -15,12 +15,26 @@ The exporter exposes metrics via an HTTP endpoint on `/metrics`.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `EXPORTER_PORT` | `8080` | Port for the HTTP metrics endpoint. |
+| `EXPORTER_ENABLE_HTTP` | `true` | Disable the HTTP endpoint when set to `false`. |
+| `EXPORTER_TEXTFILE_DIR` | _(unset)_ | When set, write Prometheus textfile output for node-exporter's textfile collector into this directory. |
+| `EXPORTER_TEXTFILE_NAME` | `zpa_log_exporter.prom` | Filename for the textfile output. |
+| `EXPORTER_TEXTFILE_INTERVAL` | `15.0` | Seconds between textfile refreshes. |
 
 ## Usage
 
 ```bash
 python zpa-log-exporter.py
 # Exposes http://0.0.0.0:8080/metrics
+```
+
+To emit Prometheus textfiles that node-exporter's textfile collector can read
+instead of serving HTTP, disable the HTTP endpoint and point the exporter at
+your collector directory:
+
+```bash
+EXPORTER_ENABLE_HTTP=false \\
+EXPORTER_TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector \\
+python zpa-log-exporter.py
 ```
 
 The process must be able to read the host's journald logs. In a
